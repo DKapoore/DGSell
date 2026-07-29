@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Store — Admin</title>
+<style>
+  :root{
+    --ink:#1c2321; --paper:#f6f4ef; --card:#ffffff; --line:#e4e0d6;
+    --accent:#2f6f4e; --warn:#b5762a; --danger:#a4402f; --muted:#736c60;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family:'Segoe UI',system-ui,sans-serif; }
+  header{ padding:20px 24px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  header h1{ font-size:1.3rem; margin:0; }
+  nav{ display:flex; gap:6px; flex-wrap:wrap; }
+  nav button{ background:none; border:1px solid var(--line); border-radius:8px; padding:8px 14px; cursor:pointer; font-size:.85rem; color:var(--muted); }
+  nav button.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  main{ max-width:1100px; margin:0 auto; padding:24px; }
+  .section{ display:none; }
+  .section.active{ display:block; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:16px; }
+  .card h3{ margin:0 0 12px; font-size:1rem; }
+  label{ display:block; font-size:.82rem; color:var(--muted); margin:10px 0 4px; }
+  input, textarea, select{ width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:8px; font-size:.9rem; font-family:inherit; }
+  textarea{ resize:vertical; }
+  .row{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .row3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  button.primary{ background:var(--accent); color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:.9rem; font-weight:600; cursor:pointer; margin-top:14px; }
+  table{ width:100%; border-collapse:collapse; font-size:.85rem; }
+  th, td{ text-align:left; padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th{ color:var(--muted); font-weight:600; font-size:.78rem; text-transform:uppercase; }
+  .badge{ padding:3px 9px; border-radius:20px; font-size:.75rem; font-weight:600; display:inline-block; }
+  .badge.PENDING{ background:#f1ecd9; color:#8a7c46; }
+  .badge.VERIFIED{ background:#e2f0e6; color:var(--accent); }
+  .badge.MANUAL_REVIEW{ background:#f7ead8; color:var(--warn); }
+  .badge.REJECTED{ background:#f6e2df; color:var(--danger); }
+  .levels{ font-size:.75rem; color:var(--muted); margin-top:4px; }
+  .action-btn{ border:1px solid var(--line); background:#fff; border-radius:6px; padding:5px 10px; font-size:.78rem; cursor:pointer; margin-right:4px; }
+  .action-btn.approve{ color:var(--accent); border-color:var(--accent); }
+  .action-btn.reject{ color:var(--danger); border-color:var(--danger); }
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; }
+  .stat-box{ padding:14px; }
+  .stat-box .num{ font-size:1.4rem; font-weight:700; }
+  .stat-box .label{ font-size:.78rem; color:var(--muted); }
+  #loginBox{ max-width:340px; margin:100px auto; }
+  #loginBox input{ margin-bottom:10px; }
+  .muted{ color:var(--muted); font-size:.82rem; }
+
+  /* Page builder */
+  .builder-layout{ display:grid; grid-template-columns:380px 1fr; gap:16px; align-items:start; }
+  @media (max-width:900px){ .builder-layout{ grid-template-columns:1fr; } }
+  .sec-row{ border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .sec-row-head{ display:flex; align-items:center; gap:8px; }
+  .sec-row-head .type-name{ flex:1; font-weight:600; font-size:.88rem; text-transform:capitalize; }
+  .sec-row-head button{ border:1px solid var(--line); background:#fff; border-radius:6px; padding:3px 8px; cursor:pointer; font-size:.78rem; }
+  .sec-editor{ margin-top:10px; display:none; }
+  .sec-editor.open{ display:block; }
+  .preview-frame-wrap{ position:sticky; top:16px; border:1px solid var(--line); border-radius:12px; overflow:hidden; height:80vh; background:#fff; }
+  .preview-frame-wrap iframe{ width:100%; height:100%; border:0; }
+</style>
+</head>
+<body>
+
+<div id="loginBox" class="card">
+  <h3>Admin login</h3>
+  <input type="password" id="adminPass" placeholder="Admin password">
+  <button class="primary" onclick="login()">Login</button>
+  <div id="loginErr" class="muted" style="color:var(--danger)"></div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <h1>Digital Store — Admin</h1>
+    <nav>
+      <button class="active" onclick="showSection('dashboard', event)">Dashboard</button>
+      <button onclick="showSection('orders', event)">Orders</button>
+      <button onclick="showSection('products', event)">Products</button>
+      <button onclick="showSection('builder', event)">Page Builder</button>
+      <button onclick="showSection('coupons', event)">Coupons</button>
+      <button onclick="showSection('settings', event)">UPI Settings</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="sec-dashboard" class="section active">
+      <div class="card">
+        <h3>Overview</h3>
+        <div class="stat-grid" id="statGrid"><div class="muted">Loading…</div></div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="sec-orders" class="section">
+      <div class="card">
+        <h3>Orders</h3>
+        <table id="ordersTable">
+          <thead><tr><th>Order</th><th>Product</th><th>Amount</th><th>Status</th><th>Score</th><th>Action</th></tr></thead>
+          <tbody><tr><td colspan="6" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section id="sec-products" class="section">
+      <div class="card">
+        <h3>Add product</h3>
+        <label>Name</label><input id="pName">
+        <label>Description</label><textarea id="pDesc" rows="2"></textarea>
+        <div class="row">
+          <div><label>Price (₹)</label><input id="pPrice" type="number"></div>
+          <div><label>Active</label><input id="pActive" type="checkbox" checked style="width:auto"></div>
+        </div>
+        <label>Product image URL (used in the sales page product canvas)</label>
+        <input id="pImage" placeholder="https://...">
+        <label>Download link (shown to buyer only after verification)</label>
+        <input id="pLink" placeholder="https://drive.google.com/...">
+        <button class="primary" onclick="addProduct()">Add product</button>
+      </div>
+      <div class="card">
+        <h3>Existing products</h3>
+        <table id="productsTable">
+          <thead><tr><th>Name</th><th>Price</th><th>Link</th><th>Active</th></tr></thead>
+          <tbody><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PAGE BUILDER -->
+    <section id="sec-builder" class="section">
+      <div class="builder-layout">
+        <div>
+          <div class="card">
+            <h3>Theme</h3>
+            <div class="row">
+              <div><label>Theme</label>
+                <select id="bTheme" onchange="onThemeChange()">
+                  <option value="minimal">Minimal</option>
+                  <option value="glassmorphism">Glassmorphism</option>
+                  <option value="gradient">Gradient</option>
+                  <option value="premium">Premium</option>
+                </select>
+              </div>
+              <div><label>Mode</label>
+                <select id="bMode" onchange="onThemeChange()">
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <div><label>Primary color</label><input type="color" id="bColor" onchange="onThemeChange()"></div>
+              <div><label>Font</label>
+                <select id="bFont" onchange="onThemeChange()">
+                  <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+                  <option value="Georgia, serif">Georgia (serif)</option>
+                  <option value="'Poppins', sans-serif">Poppins</option>
+                  <option value="'Courier New', monospace">Courier</option>
+                </select>
+              </div>
+            </div>
+            <label><input type="checkbox" id="bSticky" style="width:auto" onchange="onThemeChange()"> Sticky buy button</label>
+            <label><input type="checkbox" id="bExit" style="width:auto" onchange="onThemeChange()"> Exit popup</label>
+            <label><input type="checkbox" id="bVisitor" style="width:auto" onchange="onThemeChange()"> Visitor counter</label>
+          </div>
+
+          <div class="card">
+            <h3>Sections</h3>
+            <div id="sectionsList"></div>
+          </div>
+
+          <button class="primary" onclick="savePageConfig()">Save page</button>
+        </div>
+
+        <div class="preview-frame-wrap">
+          <iframe id="previewFrame"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <!-- COUPONS -->
+    <section id="sec-coupons" class="section">
+      <div class="card">
+        <h3>Add coupon</h3>
+        <div class="row3">
+          <div><label>Code</label><input id="cCode" placeholder="SAVE20"></div>
+          <div><label>Discount %</label><input id="cPercent" type="number"></div>
+          <div><label>Flat discount ₹</label><input id="cFlat" type="number"></div>
+        </div>
+        <div class="row">
+          <div><label>Expiry date</label><input id="cExpiry" type="date"></div>
+          <div><label>Usage limit (0 = unlimited)</label><input id="cLimit" type="number" value="0"></div>
+        </div>
+        <button class="primary" onclick="addCoupon()">Add coupon</button>
+      </div>
+      <div class="card">
+        <h3>Existing coupons</h3>
+        <table id="couponsTable">
+          <thead><tr><th>Code</th><th>Discount</th><th>Expiry</th><th>Used / Limit</th><th></th></tr></thead>
+          <tbody><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="sec-settings" class="section">
+      <div class="card">
+        <h3>UPI receiving details</h3>
+        <label>UPI ID</label><input id="sUpi" placeholder="yourshop@upi">
+        <label>Payee name (as it appears in your UPI app)</label><input id="sName">
+        <button class="primary" onclick="saveUpi()">Save</button>
+        <p class="muted">This UPI ID is what the QR code on the selling page points to, and what the verification engine looks for inside uploaded receipts.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbwvVU7pgzz6QvkfUGqJu-NCYDwpchGOym7FzKL8q6G4Z2tw0MzvoEZfktaSChq6C0Sb/exec';
+// Points the live-preview iframe at your deployed selling page (add ?preview=1)
+const SELLING_PAGE_URL = 'PASTE_YOUR_DEPLOYED_INDEX_HTML_URL_HERE';
+
+let ADMIN_PASS = '';
+let builderConfig = null;
+let previewReady = false;
+let previewProducts = [];
+
+async function api(action, params, method) {
+  if (method === 'POST') {
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action, pass: ADMIN_PASS, ...params }) });
+    return res.json();
+  }
+  const qs = new URLSearchParams({ action, pass: ADMIN_PASS, ...params }).toString();
+  const res = await fetch(API_URL + '?' + qs);
+  return res.json();
+}
+
+async function login() {
+  ADMIN_PASS = document.getElementById('adminPass').value;
+  const test = await api('adminGetOrders', {}, 'GET');
+  if (test.error) { document.getElementById('loginErr').textContent = 'Wrong password.'; return; }
+  document.getElementById('loginBox').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadDashboard(); loadOrders(); loadProducts(); loadBuilder(); loadCoupons();
+}
+
+function showSection(name, evt) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  evt.target.classList.add('active');
+  if (name === 'settings') loadSettings();
+  if (name === 'dashboard') loadDashboard();
+}
+
+// ---------- Dashboard ----------
+async function loadDashboard() {
+  const s = await api('adminGetDashboard', {}, 'GET');
+  document.getElementById('statGrid').innerHTML = `
+    <div class="card stat-box"><div class="num">₹${s.totalCollection || 0}</div><div class="label">Total collection</div></div>
+    <div class="card stat-box"><div class="num">₹${s.todaysCollection || 0}</div><div class="label">Today's collection</div></div>
+    <div class="card stat-box"><div class="num">${s.verifiedCount || 0}</div><div class="label">Verified</div></div>
+    <div class="card stat-box"><div class="num">${s.pendingReview || 0}</div><div class="label">Pending review</div></div>
+    <div class="card stat-box"><div class="num">${s.rejectedCount || 0}</div><div class="label">Rejected</div></div>
+    <div class="card stat-box"><div class="num">${s.highFraudCount || 0}</div><div class="label">High fraud risk</div></div>
+  `;
+}
+
+// ---------- Orders ----------
+async function loadOrders() {
+  const orders = await api('adminGetOrders', {}, 'GET');
+  const tbody = document.querySelector('#ordersTable tbody');
+  if (!orders.length) { tbody.innerHTML = '<tr><td colspan="6" class="muted">No orders yet.</td></tr>'; return; }
+  tbody.innerHTML = orders.slice().reverse().map(o => {
+    const actions = o.Status === 'MANUAL_REVIEW'
+      ? `<button class="action-btn approve" onclick="decide('${o.OrderID}','VERIFIED')">Approve</button>
+         <button class="action-btn reject" onclick="decide('${o.OrderID}','REJECTED')">Reject</button>`
+      : '';
+    return `<tr>
+      <td>${o.OrderID}<div class="muted">${new Date(o.CreatedAt).toLocaleString()}</div></td>
+      <td>${o.ProductName}</td>
+      <td>₹${o.Amount}</td>
+      <td><span class="badge ${o.Status}">${o.Status}</span><div class="levels">UTR: ${o.UTR || '-'} · Fraud: ${o.FraudRiskLevel || '-'}</div></td>
+      <td>${o.FinalScore || '-'}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function decide(orderId, decision) {
+  await api('adminManualDecision', { orderId, decision }, 'POST');
+  loadOrders();
+}
+
+// ---------- Products ----------
+async function loadProducts() {
+  const products = await api('adminGetProducts', {}, 'GET');
+  previewProducts = products;
+  const tbody = document.querySelector('#productsTable tbody');
+  if (!products.length) { tbody.innerHTML = '<tr><td colspan="4" class="muted">No products yet.</td></tr>'; return; }
+  tbody.innerHTML = products.map(p => `
+    <tr>
+      <td>${p.Name}</td>
+      <td>₹${p.Price}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.DownloadLink}</td>
+      <td>${p.Active ? 'Yes' : 'No'}</td>
+    </tr>
+  `).join('');
+}
+
+async function addProduct() {
+  const body = {
+    name: document.getElementById('pName').value,
+    description: document.getElementById('pDesc').value,
+    price: document.getElementById('pPrice').value,
+    imageUrl: document.getElementById('pImage').value,
+    downloadLink: document.getElementById('pLink').value
+  };
+  if (!body.name || !body.price || !body.downloadLink) { alert('Name, price and download link are required.'); return; }
+  await api('adminAddProduct', body, 'POST');
+  document.getElementById('pName').value = '';
+  document.getElementById('pDesc').value = '';
+  document.getElementById('pPrice').value = '';
+  document.getElementById('pImage').value = '';
+  document.getElementById('pLink').value = '';
+  loadProducts();
+}
+
+// ---------- UPI Settings ----------
+async function loadSettings() {
+  const s = await api('getUpiSettings', {}, 'GET');
+  document.getElementById('sUpi').value = s.upiId || '';
+  document.getElementById('sName').value = s.payeeName || '';
+}
+
+async function saveUpi() {
+  await api('adminSetUpi', { upiId: document.getElementById('sUpi').value, payeeName: document.getElementById('sName').value }, 'POST');
+  alert('Saved.');
+}
+
+// ---------- Coupons ----------
+async function loadCoupons() {
+  const coupons = await api('adminGetCoupons', {}, 'GET');
+  const tbody = document.querySelector('#couponsTable tbody');
+  if (!coupons.length) { tbody.innerHTML = '<tr><td colspan="5" class="muted">No coupons yet.</td></tr>'; return; }
+  tbody.innerHTML = coupons.map(c => `
+    <tr>
+      <td>${c.Code}</td>
+      <td>${c.DiscountPercent ? c.DiscountPercent + '%' : ''}${c.DiscountFlat ? ' ₹' + c.DiscountFlat : ''}</td>
+      <td>${c.ExpiryDate ? new Date(c.ExpiryDate).toLocaleDateString() : '—'}</td>
+      <td>${c.UsedCount || 0} / ${c.UsageLimit || '∞'}</td>
+      <td><button class="action-btn reject" onclick="deleteCoupon('${c.Code}')">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+async function addCoupon() {
+  const body = {
+    code: document.getElementById('cCode').value,
+    discountPercent: document.getElementById('cPercent').value,
+    discountFlat: document.getElementById('cFlat').value,
+    expiryDate: document.getElementById('cExpiry').value,
+    usageLimit: document.getElementById('cLimit').value
+  };
+  if (!body.code) { alert('Coupon code is required.'); return; }
+  await api('adminAddCoupon', body, 'POST');
+  loadCoupons();
+}
+
+async function deleteCoupon(code) {
+  await api('adminDeleteCoupon', { code }, 'POST');
+  loadCoupons();
+}
+
+// ---------- Page Builder ----------
+const SECTION_LABELS = {
+  hero: 'Hero', productCanvas: 'Product canvas', features: 'Features', gallery: 'Gallery',
+  demoVideo: 'Demo video', pricing: 'Pricing', offer: 'Offer / timer', comparison: 'Comparison table',
+  faq: 'FAQ', testimonials: 'Testimonials', trustBadges: 'Trust badges', cta: 'CTA', footer: 'Footer'
+};
+
+async function loadBuilder() {
+  builderConfig = await api('getPageConfig', {}, 'GET');
+  document.getElementById('bTheme').value = builderConfig.theme;
+  document.getElementById('bMode').value = builderConfig.mode;
+  document.getElementById('bColor').value = builderConfig.primaryColor;
+  document.getElementById('bFont').value = builderConfig.font;
+  document.getElementById('bSticky').checked = !!builderConfig.stickyBuyButton;
+  document.getElementById('bExit').checked = !!builderConfig.exitPopup;
+  document.getElementById('bVisitor').checked = !!builderConfig.visitorCounter;
+  renderSectionsList();
+
+  document.getElementById('previewFrame').src = SELLING_PAGE_URL + '?preview=1';
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'previewReady') { previewReady = true; updatePreview(); }
+  });
+}
+
+function onThemeChange() {
+  builderConfig.theme = document.getElementById('bTheme').value;
+  builderConfig.mode = document.getElementById('bMode').value;
+  builderConfig.primaryColor = document.getElementById('bColor').value;
+  builderConfig.font = document.getElementById('bFont').value;
+  builderConfig.stickyBuyButton = document.getElementById('bSticky').checked;
+  builderConfig.exitPopup = document.getElementById('bExit').checked;
+  builderConfig.visitorCounter = document.getElementById('bVisitor').checked;
+  updatePreview();
+}
+
+function renderSectionsList() {
+  const sorted = builderConfig.sections.slice().sort((a, b) => a.order - b.order);
+  document.getElementById('sectionsList').innerHTML = sorted.map((sec, i) => `
+    <div class="sec-row">
+      <div class="sec-row-head">
+        <input type="checkbox" style="width:auto" ${sec.enabled ? 'checked' : ''} onchange="toggleSection('${sec.type}', this.checked)">
+        <span class="type-name">${SECTION_LABELS[sec.type] || sec.type}</span>
+        <button onclick="moveSection('${sec.type}', -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button onclick="moveSection('${sec.type}', 1)" ${i === sorted.length - 1 ? 'disabled' : ''}>↓</button>
+        <button onclick="toggleEditor('${sec.type}')">Edit</button>
+      </div>
+      <div class="sec-editor" id="editor-${sec.type}">${sectionEditorHtml(sec)}</div>
+    </div>
+  `).join('');
+}
+
+function toggleSection(type, enabled) {
+  builderConfig.sections.find(s => s.type === type).enabled = enabled;
+  updatePreview();
+}
+
+function moveSection(type, dir) {
+  const sorted = builderConfig.sections.slice().sort((a, b) => a.order - b.order);
+  const idx = sorted.findIndex(s => s.type === type);
+  const swapIdx = idx + dir;
+  if (swapIdx < 0 || swapIdx >= sorted.length) return;
+  const tmp = sorted[idx].order;
+  sorted[idx].order = sorted[swapIdx].order;
+  sorted[swapIdx].order = tmp;
+  renderSectionsList();
+  updatePreview();
+}
+
+function toggleEditor(type) {
+  document.getElementById('editor-' + type).classList.toggle('open');
+}
+
+function sectionEditorHtml(sec) {
+  const d = sec.data;
+  switch (sec.type) {
+    case 'hero': return `
+      <label>Headline</label><input value="${escAttr(d.headline)}" oninput="updateField('hero','headline',this.value)">
+      <label>Subheadline</label><input value="${escAttr(d.subheadline)}" oninput="updateField('hero','subheadline',this.value)">
+      <label>Image URL</label><input value="${escAttr(d.mediaUrl)}" oninput="updateField('hero','mediaUrl',this.value)">`;
+    case 'features': return `
+      <label>One feature per line</label>
+      <textarea rows="4" oninput="updateField('features','items',this.value.split('\\n').filter(Boolean))">${(d.items||[]).join('\n')}</textarea>`;
+    case 'gallery': return `
+      <label>One image URL per line</label>
+      <textarea rows="3" oninput="updateField('gallery','images',this.value.split('\\n').filter(Boolean))">${(d.images||[]).join('\n')}</textarea>`;
+    case 'demoVideo': return `
+      <label>Embed video URL</label><input value="${escAttr(d.videoUrl)}" oninput="updateField('demoVideo','videoUrl',this.value)">`;
+    case 'offer': return `
+      <label>Discount %</label><input type="number" value="${d.discountPercent||0}" oninput="updateField('offer','discountPercent',Number(this.value))">
+      <label>Timer length (minutes)</label><input type="number" value="${d.timerMinutes||0}" oninput="updateField('offer','timerMinutes',Number(this.value))">`;
+    case 'comparison': return `
+      <label>One row per line: Label | Option A | Option B</label>
+      <textarea rows="3" oninput="updateField('comparison','rows',parseRows(this.value))">${(d.rows||[]).map(r=>r.label+' | '+r.a+' | '+r.b).join('\n')}</textarea>`;
+    case 'faq': return `
+      <label>One per line: Question :: Answer</label>
+      <textarea rows="4" oninput="updateField('faq','items',parsePairs(this.value,'q','a'))">${(d.items||[]).map(i=>i.q+' :: '+i.a).join('\n')}</textarea>`;
+    case 'testimonials': return `
+      <label>One per line: Name :: Testimonial text</label>
+      <textarea rows="3" oninput="updateField('testimonials','items',parsePairs(this.value,'name','text'))">${(d.items||[]).map(i=>i.name+' :: '+i.text).join('\n')}</textarea>`;
+    case 'trustBadges': return `
+      <label>One badge per line</label>
+      <textarea rows="3" oninput="updateField('trustBadges','badges',this.value.split('\\n').filter(Boolean))">${(d.badges||[]).join('\n')}</textarea>`;
+    case 'cta': return `
+      <label>Heading</label><input value="${escAttr(d.text)}" oninput="updateField('cta','text',this.value)">
+      <label>Button text</label><input value="${escAttr(d.buttonText)}" oninput="updateField('cta','buttonText',this.value)">`;
+    case 'footer': return `
+      <label>Footer text</label><input value="${escAttr(d.text)}" oninput="updateField('footer','text',this.value)">`;
+    default: return `<div class="muted">Uses your product list automatically — no extra fields.</div>`;
+  }
+}
+
+function escAttr(v) { return String(v || '').replace(/"/g, '&quot;'); }
+
+function parseRows(text) {
+  return text.split('\n').filter(Boolean).map(line => {
+    const [label, a, b] = line.split('|').map(s => (s || '').trim());
+    return { label, a, b };
+  });
+}
+function parsePairs(text, keyA, keyB) {
+  return text.split('\n').filter(Boolean).map(line => {
+    const [a, b] = line.split('::').map(s => (s || '').trim());
+    const obj = {}; obj[keyA] = a; obj[keyB] = b; return obj;
+  });
+}
+
+function updateField(type, field, value) {
+  const sec = builderConfig.sections.find(s => s.type === type);
+  sec.data[field] = value;
+  updatePreview();
+}
+
+function updatePreview() {
+  const frame = document.getElementById('previewFrame');
+  if (!frame.contentWindow || !previewReady) return;
+  frame.contentWindow.postMessage({ type: 'previewConfig', config: builderConfig, products: previewProducts }, '*');
+}
+
+async function savePageConfig() {
+  await api('adminSavePageConfig', { config: builderConfig }, 'POST');
+  alert('Page saved. Live on your selling page now.');
+}
+</script>
+</body>
+</html>
