@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Store</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --primary:#2f6f4e; --primary-ink:#ffffff;
+    --bg:#f6f4ef; --card:#ffffff; --ink:#1c2321; --muted:#736c60; --line:#e4e0d6;
+    --font: 'Segoe UI', system-ui, sans-serif;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:var(--font); }
+  a{ color:inherit; }
+  .container{ max-width:960px; margin:0 auto; padding:0 20px; }
+  section{ padding:56px 0; }
+  h2.sec-title{ font-size:1.6rem; margin:0 0 28px; text-align:center; }
+
+  /* --- Reveal-on-scroll animations --- */
+  [data-animate]{ opacity:0; transition:opacity .6s ease, transform .6s ease; }
+  [data-animate="fade"]{ transform:translateY(0); }
+  [data-animate="slide"]{ transform:translateX(-24px); }
+  [data-animate="zoom"]{ transform:scale(.92); }
+  [data-animate].in-view{ opacity:1; transform:none; }
+
+  @keyframes floaty{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-10px);} }
+  .floating{ animation:floaty 4s ease-in-out infinite; }
+
+  /* --- Buttons --- */
+  .btn{
+    display:inline-block; border:none; border-radius:10px; padding:13px 24px;
+    font-weight:600; font-size:.95rem; cursor:pointer; background:var(--primary); color:var(--primary-ink);
+    transition:transform .15s ease, filter .15s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); filter:brightness(1.08); }
+
+  /* ===== THEME: minimal (default look above already is minimal) ===== */
+  body.theme-glassmorphism{ background:linear-gradient(135deg,#dfe9e3,#f3ede0); }
+  body.theme-glassmorphism .card{ background:rgba(255,255,255,.55); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,.4); }
+  body.theme-gradient{ background:linear-gradient(135deg,var(--primary),#1c2321); }
+  body.theme-gradient .card{ background:rgba(255,255,255,.94); }
+  body.theme-gradient section.hero{ color:#fff; }
+  body.theme-premium{ background:#14181a; color:#efe9dd; --font: Georgia, 'Times New Roman', serif; }
+  body.theme-premium .card{ background:#1e2427; border:1px solid #333; }
+  body.theme-premium h2.sec-title{ color:#e8c988; }
+  body.theme-premium .btn{ background:#e8c988; color:#14181a; }
+
+  body.mode-dark{ background:#14181a; color:#efe9dd; }
+  body.mode-dark .card{ background:#1e2427; border:1px solid #333; color:#efe9dd; }
+
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); }
+
+  /* --- Hero --- */
+  section.hero{ text-align:center; padding:72px 0 56px; }
+  section.hero h1{ font-size:2.1rem; margin:0 0 12px; letter-spacing:-.01em; }
+  section.hero p{ color:var(--muted); font-size:1.05rem; max-width:520px; margin:0 auto 24px; }
+  section.hero img{ max-width:340px; width:100%; border-radius:16px; margin:20px auto 0; display:block; transition:transform .4s ease; }
+  section.hero img:hover{ transform:scale(1.04); }
+
+  /* --- Product canvas --- */
+  .canvas-wrap{ display:flex; justify-content:center; }
+  .canvas-wrap img{ max-width:420px; width:100%; border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.12); }
+
+  /* --- Features --- */
+  .features-grid{ display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
+  .feature-item{ padding:18px; text-align:center; }
+  .feature-item .icon{ font-size:1.6rem; margin-bottom:8px; }
+
+  /* --- Gallery --- */
+  .gallery-row{ display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; }
+  .gallery-row img{ height:200px; border-radius:12px; flex:0 0 auto; }
+
+  /* --- Pricing --- */
+  .grid{ display:grid; gap:18px; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); }
+  .price-card{ padding:22px; display:flex; flex-direction:column; gap:10px; }
+  .price-card h3{ margin:0; font-size:1.1rem; }
+  .price-card p{ margin:0; color:var(--muted); font-size:.9rem; flex:1; }
+  .price-line{ font-size:1.35rem; font-weight:700; }
+  .price-line .strike{ text-decoration:line-through; color:var(--muted); font-size:.95rem; font-weight:400; margin-right:6px; }
+
+  /* --- Offer / timer --- */
+  .offer-banner{ background:var(--primary); color:#fff; text-align:center; padding:16px; border-radius:var(--radius); }
+  .timer{ font-size:1.4rem; font-weight:700; margin-top:6px; letter-spacing:.02em; }
+
+  /* --- Comparison table --- */
+  table.compare{ width:100%; border-collapse:collapse; }
+  table.compare th, table.compare td{ padding:10px; border-bottom:1px solid var(--line); text-align:center; }
+  table.compare td:first-child, table.compare th:first-child{ text-align:left; }
+
+  /* --- FAQ --- */
+  .faq-item{ padding:14px 18px; margin-bottom:10px; cursor:pointer; }
+  .faq-item .q{ font-weight:600; display:flex; justify-content:space-between; }
+  .faq-item .a{ display:none; color:var(--muted); margin-top:8px; font-size:.9rem; }
+  .faq-item.open .a{ display:block; }
+
+  /* --- Testimonials --- */
+  .testi-item{ padding:18px; font-size:.92rem; }
+  .testi-item .name{ font-weight:600; margin-top:10px; }
+
+  /* --- Trust badges --- */
+  .badges-row{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .badge-pill{ padding:8px 16px; border-radius:20px; font-size:.82rem; background:var(--line); }
+
+  /* --- CTA --- */
+  section.cta{ text-align:center; }
+
+  footer{ text-align:center; padding:32px 20px; color:var(--muted); font-size:.85rem; }
+
+  /* --- Sticky buy bar --- */
+  .sticky-bar{
+    position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line);
+    padding:12px 20px; display:none; align-items:center; justify-content:space-between; z-index:40;
+  }
+  .sticky-bar.show{ display:flex; }
+
+  .visitor-pill{ font-size:.8rem; color:var(--muted); text-align:center; margin-top:10px; }
+
+  /* --- Modal / checkout --- */
+  .overlay{ position:fixed; inset:0; background:rgba(28,35,33,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .overlay.active{ display:flex; }
+  .modal{ background:var(--card); color:var(--ink); border-radius:16px; padding:24px; max-width:420px; width:100%; max-height:90vh; overflow-y:auto; }
+  .modal h2{ margin:0 0 4px; font-size:1.2rem; }
+  .modal .sub{ color:var(--muted); font-size:.88rem; margin-bottom:16px; }
+  .qr-box{ display:flex; justify-content:center; padding:16px; background:#fff; border:1px solid var(--line); border-radius:12px; margin-bottom:14px; }
+  .amount-line{ text-align:center; font-size:1.5rem; font-weight:700; margin-bottom:4px; }
+  .order-id{ text-align:center; color:var(--muted); font-size:.8rem; margin-bottom:16px; }
+  .coupon-row{ display:flex; gap:8px; margin-bottom:14px; }
+  .coupon-row input{ flex:1; padding:9px 11px; border:1px solid var(--line); border-radius:8px; }
+  .coupon-row button{ border:1px solid var(--line); background:none; border-radius:8px; padding:0 14px; cursor:pointer; }
+  .upload-row{ border:1.5px dashed var(--line); border-radius:12px; padding:16px; text-align:center; margin-bottom:14px; }
+  .submit-btn{ width:100%; background:var(--ink); color:#fff; border:none; border-radius:10px; padding:12px; font-size:.95rem; font-weight:600; cursor:pointer; }
+  .submit-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .close-btn{ background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; display:block; margin:12px auto 0; }
+  .status-box{ text-align:center; padding:20px 10px; }
+  .status-box .dot{ width:44px; height:44px; border-radius:50%; margin:0 auto 12px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; }
+  .status-box.pending .dot{ background:#f1ecd9; }
+  .status-box.verified .dot{ background:#e2f0e6; color:var(--primary); }
+  .status-box.review .dot{ background:#f7ead8; color:#b5762a; }
+  .status-box.rejected .dot{ background:#f6e2df; color:#a4402f; }
+  .download-btn{ display:inline-block; margin-top:14px; background:var(--primary); color:#fff; text-decoration:none; padding:12px 22px; border-radius:10px; font-weight:600; }
+  .spinner{ width:16px; height:16px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; display:inline-block; animation:spin .7s linear infinite; margin-right:8px; vertical-align:-3px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* --- Exit popup --- */
+  .exit-overlay{ position:fixed; inset:0; background:rgba(28,35,33,.6); display:none; align-items:center; justify-content:center; z-index:60; }
+  .exit-overlay.show{ display:flex; }
+  .exit-card{ background:var(--card); border-radius:16px; padding:28px; max-width:360px; text-align:center; }
+</style>
+</head>
+<body>
+
+<div id="page"></div>
+
+<div class="sticky-bar" id="stickyBar">
+  <span>Ready to buy?</span>
+  <button class="btn" onclick="document.getElementById('sec-pricing').scrollIntoView({behavior:'smooth'})">Buy now</button>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<div class="exit-overlay" id="exitOverlay">
+  <div class="exit-card">
+    <h3>Wait — before you go</h3>
+    <p style="color:var(--muted);font-size:.9rem">Check out our products before you leave.</p>
+    <button class="btn" onclick="document.getElementById('exitOverlay').classList.remove('show')">Continue browsing</button>
+  </div>
+</div>
+
+<script>
+// ⚠️ Paste your deployed Apps Script Web App URL here after deployment
+const API_URL = 'https://script.google.com/macros/s/AKfycbwvVU7pgzz6QvkfUGqJu-NCYDwpchGOym7FzKL8q6G4Z2tw0MzvoEZfktaSChq6C0Sb/exec';
+
+let config = null;
+let products = [];
+let currentOrder = null;
+let appliedCoupon = null;
+let pollTimer = null;
+
+async function api(action, params, method) {
+  if (method === 'POST') {
+    const res = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action, ...params }) });
+    return res.json();
+  }
+  const qs = new URLSearchParams({ action, ...params }).toString();
+  const res = await fetch(API_URL + '?' + qs);
+  return res.json();
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ================= THEME =================
+function applyTheme(cfg) {
+  document.body.className = 'theme-' + cfg.theme + (cfg.mode === 'dark' ? ' mode-dark' : '');
+  document.documentElement.style.setProperty('--primary', cfg.primaryColor || '#2f6f4e');
+  document.documentElement.style.setProperty('--font', cfg.font || "'Segoe UI', system-ui, sans-serif");
+}
+
+// ================= SECTION RENDERERS =================
+const renderers = {
+  hero(sec) {
+    const d = sec.data;
+    return `<section class="hero" data-animate="fade">
+      <div class="container">
+        <h1>${escapeHtml(d.headline)}</h1>
+        <p>${escapeHtml(d.subheadline)}</p>
+        ${d.mediaUrl ? `<img class="floating" src="${escapeHtml(d.mediaUrl)}" alt="">` : ''}
+        <div><button class="btn" style="margin-top:10px" onclick="document.getElementById('sec-pricing').scrollIntoView({behavior:'smooth'})">Get started</button></div>
+        ${config.visitorCounter ? `<div class="visitor-pill" id="visitorPill"></div>` : ''}
+      </div>
+    </section>`;
+  },
+  productCanvas(sec) {
+    const img = products[0] && products[0].ImageUrl;
+    return `<section data-animate="zoom">
+      <div class="container canvas-wrap">
+        <img src="${img ? escapeHtml(img) : 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=500'}" alt="Product preview">
+      </div>
+    </section>`;
+  },
+  features(sec) {
+    return `<section data-animate="fade">
+      <div class="container">
+        <h2 class="sec-title">Why you'll like it</h2>
+        <div class="features-grid">
+          ${(sec.data.items || []).map(f => `<div class="card feature-item"><div class="icon">✦</div>${escapeHtml(f)}</div>`).join('')}
+        </div>
+      </div>
+    </section>`;
+  },
+  gallery(sec) {
+    if (!(sec.data.images || []).length) return '';
+    return `<section data-animate="slide">
+      <div class="container">
+        <h2 class="sec-title">Gallery</h2>
+        <div class="gallery-row">${sec.data.images.map(url => `<img src="${escapeHtml(url)}" alt="">`).join('')}</div>
+      </div>
+    </section>`;
+  },
+  demoVideo(sec) {
+    if (!sec.data.videoUrl) return '';
+    return `<section data-animate="fade">
+      <div class="container">
+        <h2 class="sec-title">See it in action</h2>
+        <div class="card" style="aspect-ratio:16/9;overflow:hidden">
+          <iframe src="${escapeHtml(sec.data.videoUrl)}" style="width:100%;height:100%;border:0" allowfullscreen></iframe>
+        </div>
+      </div>
+    </section>`;
+  },
+  pricing() {
+    if (!products.length) return `<section id="sec-pricing"><div class="container"><p style="text-align:center;color:var(--muted)">No products available right now.</p></div></section>`;
+    return `<section id="sec-pricing" data-animate="fade">
+      <div class="container">
+        <h2 class="sec-title">Pricing</h2>
+        <div class="grid">
+          ${products.map(p => `
+            <div class="card price-card">
+              <h3>${escapeHtml(p.Name)}</h3>
+              <p>${escapeHtml(p.Description || '')}</p>
+              <div class="price-line">₹${p.Price}</div>
+              <button class="btn" onclick="startCheckout('${p.ProductID}')">Buy now</button>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </section>`;
+  },
+  offer(sec) {
+    if (!sec.data.timerMinutes) return '';
+    return `<section data-animate="zoom">
+      <div class="container">
+        <div class="offer-banner">
+          <div>${sec.data.discountPercent ? sec.data.discountPercent + '% off' : 'Limited-time offer'} — ends in</div>
+          <div class="timer" id="offerTimer">--:--:--</div>
+        </div>
+      </div>
+    </section>`;
+  },
+  comparison(sec) {
+    if (!(sec.data.rows || []).length) return '';
+    return `<section data-animate="fade">
+      <div class="container">
+        <h2 class="sec-title">Compare</h2>
+        <table class="compare card"><tbody>
+          ${sec.data.rows.map(r => `<tr><td>${escapeHtml(r.label)}</td><td>${escapeHtml(r.a)}</td><td>${escapeHtml(r.b)}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </section>`;
+  },
+  faq(sec) {
+    if (!(sec.data.items || []).length) return '';
+    return `<section data-animate="slide">
+      <div class="container">
+        <h2 class="sec-title">Frequently asked</h2>
+        ${sec.data.items.map((item, i) => `
+          <div class="card faq-item" onclick="this.classList.toggle('open')">
+            <div class="q">${escapeHtml(item.q)}<span>+</span></div>
+            <div class="a">${escapeHtml(item.a)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </section>`;
+  },
+  testimonials(sec) {
+    if (!(sec.data.items || []).length) return '';
+    return `<section data-animate="fade">
+      <div class="container">
+        <h2 class="sec-title">What buyers say</h2>
+        <div class="grid">
+          ${sec.data.items.map(t => `<div class="card testi-item">"${escapeHtml(t.text)}"<div class="name">— ${escapeHtml(t.name)}</div></div>`).join('')}
+        </div>
+      </div>
+    </section>`;
+  },
+  trustBadges(sec) {
+    return `<section data-animate="fade">
+      <div class="container badges-row">
+        ${(sec.data.badges || []).map(b => `<span class="badge-pill">${escapeHtml(b)}</span>`).join('')}
+      </div>
+    </section>`;
+  },
+  cta(sec) {
+    return `<section class="cta" data-animate="zoom">
+      <div class="container">
+        <h2 class="sec-title">${escapeHtml(sec.data.text)}</h2>
+        <button class="btn" onclick="document.getElementById('sec-pricing').scrollIntoView({behavior:'smooth'})">${escapeHtml(sec.data.buttonText || 'Buy now')}</button>
+      </div>
+    </section>`;
+  },
+  footer(sec) {
+    return `<footer>${escapeHtml(sec.data.text || '© ' + new Date().getFullYear())}</footer>`;
+  }
+};
+
+function renderPage() {
+  const sorted = config.sections.filter(s => s.enabled).sort((a, b) => a.order - b.order);
+  document.getElementById('page').innerHTML = sorted.map(s => (renderers[s.type] ? renderers[s.type](s) : '')).join('');
+
+  if (config.stickyBuyButton) {
+    window.addEventListener('scroll', () => {
+      const pricingEl = document.getElementById('sec-pricing');
+      const show = pricingEl && window.scrollY > 400 && pricingEl.getBoundingClientRect().top > window.innerHeight;
+      document.getElementById('stickyBar').classList.toggle('show', !!show);
+    });
+  }
+
+  setupScrollAnimations();
+  setupOfferTimer();
+  if (config.visitorCounter) setupVisitorCounter();
+  if (config.exitPopup) setupExitPopup();
+}
+
+function setupScrollAnimations() {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in-view'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('[data-animate]').forEach(el => observer.observe(el));
+}
+
+function setupOfferTimer() {
+  const el = document.getElementById('offerTimer');
+  if (!el) return;
+  const offerSec = config.sections.find(s => s.type === 'offer');
+  const minutes = offerSec.data.timerMinutes;
+  let deadline = sessionStorage.getItem('offerDeadline');
+  if (!deadline) { deadline = Date.now() + minutes * 60000; sessionStorage.setItem('offerDeadline', deadline); }
+  const tick = () => {
+    const diff = Math.max(0, deadline - Date.now());
+    const h = String(Math.floor(diff / 3600000)).padStart(2, '0');
+    const m = String(Math.floor((diff % 3600000) / 60000)).padStart(2, '0');
+    const s = String(Math.floor((diff % 60000) / 1000)).padStart(2, '0');
+    el.textContent = `${h}:${m}:${s}`;
+    if (diff > 0) requestAnimationFrame(() => setTimeout(tick, 1000));
+  };
+  tick();
+}
+
+async function setupVisitorCounter() {
+  const result = await api('incrementVisitor', {}, 'GET');
+  const pill = document.getElementById('visitorPill');
+  if (pill) pill.textContent = `${result.count} people have visited this page`;
+}
+
+function setupExitPopup() {
+  let shown = sessionStorage.getItem('exitPopupShown');
+  document.addEventListener('mouseleave', e => {
+    if (e.clientY < 10 && !shown) {
+      document.getElementById('exitOverlay').classList.add('show');
+      shown = true;
+      sessionStorage.setItem('exitPopupShown', '1');
+    }
+  });
+}
+
+// ================= CHECKOUT FLOW =================
+async function startCheckout(productId) {
+  appliedCoupon = null;
+  openModal(`<div class="status-box pending"><div class="dot"><span class="spinner" style="border-top-color:#736c60;border-color:#736c60 transparent transparent transparent"></span></div>Creating your order…</div>`);
+  const order = await api('createOrder', { productId }, 'POST');
+  if (order.error) { openModal(`<div class="status-box rejected"><div class="dot">!</div>${escapeHtml(order.error)}</div>`); return; }
+  currentOrder = order;
+  currentOrder.productId = productId;
+  renderCheckout(order);
+}
+
+function renderCheckout(order) {
+  openModal(`
+    <h2>${escapeHtml(order.productName)}</h2>
+    <div class="sub">Scan the QR with any UPI app to pay</div>
+    <div class="amount-line" id="amountLine">₹${order.amount}</div>
+    <div class="order-id">Order ID: ${order.orderId}</div>
+    <div class="coupon-row">
+      <input type="text" id="couponInput" placeholder="Coupon code (optional)">
+      <button onclick="applyCoupon()">Apply</button>
+    </div>
+    <div class="qr-box" id="qrBox"></div>
+    <div class="upload-row">
+      <div>After paying, upload a screenshot of your payment receipt</div>
+      <input type="file" id="receiptFile" accept="image/*">
+    </div>
+    <button class="submit-btn" id="submitBtn" onclick="submitReceipt()">Submit receipt for verification</button>
+    <button class="close-btn" onclick="closeModal()">Cancel</button>
+  `);
+  new QRCode(document.getElementById('qrBox'), { text: order.upiLink, width: 180, height: 180 });
+}
+
+async function applyCoupon() {
+  const code = document.getElementById('couponInput').value.trim();
+  if (!code) return;
+  const check = await api('checkCoupon', { code, amount: currentOrder.amount }, 'GET');
+  if (!check.valid) { alert(check.reason); return; }
+  // Recreate the order with the coupon applied so the sheet + QR reflect the discounted amount
+  const order = await api('createOrder', { productId: currentOrder.productId, couponCode: code }, 'POST');
+  if (order.error) { alert(order.error); return; }
+  currentOrder = order;
+  currentOrder.productId = currentOrder.productId;
+  appliedCoupon = code;
+  renderCheckout(order);
+}
+
+async function submitReceipt() {
+  const fileInput = document.getElementById('receiptFile');
+  const btn = document.getElementById('submitBtn');
+  if (!fileInput.files.length) { alert('Please choose a receipt image first.'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Verifying…';
+
+  const file = fileInput.files[0];
+  const base64 = await fileToBase64(file);
+  const result = await api('uploadReceipt', { orderId: currentOrder.orderId, imageBase64: base64, mimeType: file.type }, 'POST');
+  renderResult(result);
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderResult(result) {
+  if (result.status === 'VERIFIED') {
+    openModal(`<div class="status-box verified"><div class="dot">✓</div><div><strong>Payment verified!</strong></div><div class="sub">Your download is ready.</div><a class="download-btn" href="${result.downloadLink}" target="_blank">Download now</a></div>`);
+  } else if (result.status === 'MANUAL_REVIEW') {
+    openModal(`<div class="status-box review"><div class="dot">⏳</div><div><strong>Receipt under manual review</strong></div><div class="sub">We couldn't auto-confirm this one — the shop owner will review it shortly. This will update automatically.</div></div>`);
+    pollOrderStatus(currentOrder.orderId);
+  } else {
+    openModal(`<div class="status-box rejected"><div class="dot">✕</div><div><strong>Receipt could not be verified</strong></div><div class="sub">Please check the screenshot and try again, or contact the seller.</div><button class="submit-btn" style="margin-top:14px" onclick="renderCheckout(currentOrder)">Try again</button></div>`);
+  }
+}
+
+function pollOrderStatus(orderId) {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const status = await api('getOrderStatus', { orderId }, 'GET');
+    if (status.status && status.status !== 'MANUAL_REVIEW') { clearInterval(pollTimer); renderResult(status); }
+  }, 8000);
+}
+
+function openModal(html) { document.getElementById('modal').innerHTML = html; document.getElementById('overlay').classList.add('active'); }
+function closeModal() { document.getElementById('overlay').classList.remove('active'); clearInterval(pollTimer); }
+
+// ================= INIT =================
+const isPreview = new URLSearchParams(location.search).get('preview') === '1';
+
+async function init() {
+  if (isPreview) {
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'previewConfig') {
+        config = e.data.config;
+        products = e.data.products || products;
+        applyTheme(config);
+        renderPage();
+      }
+    });
+    // Ask the parent (admin page) to send the current draft once we're ready
+    if (window.parent) window.parent.postMessage({ type: 'previewReady' }, '*');
+    products = await api('getProducts', {}, 'GET'); // real products still shown even in preview
+    return;
+  }
+  [config, products] = await Promise.all([
+    api('getPageConfig', {}, 'GET'),
+    api('getProducts', {}, 'GET')
+  ]);
+  applyTheme(config);
+  renderPage();
+}
+init();
+</script>
+</body>
+</html>
